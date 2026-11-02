@@ -1,0 +1,13 @@
+# Dependencies of the Streamlit app (deploy/streamlit/streamlit_app.py). Streamlit Community Cloud reads the file next to the entry
+# point before the one at the repository root, so this one wins. Choose Python 3.12 in "Advanced settings": the two PyTorch lines are
+# CPU-only wheels for Python 3.12 on Linux x86_64, given by URL so that no resolver can pick the large CUDA build from PyPI instead.
+streamlit==1.66.1
+torch @ https://download.pytorch.org/whl/cpu/torch-2.11.0%2Bcpu-cp312-cp312-manylinux_2_28_x86_64.whl
+torchvision @ https://download.pytorch.org/whl/cpu/torchvision-0.26.0%2Bcpu-cp312-cp312-manylinux_2_28_x86_64.whl
+numpy==2.1.0
+pillow==12.1.1
+scipy==1.17.0
+pandas==3.0.1
+matplotlib==3.10.8
+PyYAML==6.0.1
+huggingface_hub==2.4.0

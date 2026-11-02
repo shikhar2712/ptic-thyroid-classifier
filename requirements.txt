@@ -22,6 +22,9 @@ uvicorn==0.54.0
 pydantic==2.12.5
 huggingface_hub==2.4.0
 
+# Streamlit front end (deploy/streamlit; its own pinned file is deploy/streamlit/requirements.txt)
+streamlit==1.66.1
+
 # Tests
 pytest==8.1.1
 httpx==0.28.1

@@ -1,63 +1,71 @@
 # Deployment notes
 
-The demo is one FastAPI service (`src/demo/app.py`) with a hand-written front end (`src/demo/static`). Three places hold the project:
+The same Python code (input gate, 15-model ensemble, Grad-CAM) has two front ends:
 
-| Where | Visibility | Holds |
+| Front end | Where | Used for |
 |---|---|---|
-| GitHub repository | public | code, tests, configs, this documentation. No data, weights, patient tables or tissue images |
-| Hugging Face Space (Docker SDK, CPU basic) | public | the same code, a Dockerfile, a model card. **No weights**. *Not created yet: see the note below* |
+| FastAPI service with a hand-written page (`src/demo`) | local, or as a Docker image (`deploy/space/`) | the internal demo and the JSON API |
+| Streamlit app (`deploy/streamlit/streamlit_app.py`) | Streamlit Community Cloud | the public demo |
+
+The Streamlit app is the public one because it is free to host from a GitHub repository. Hugging Face now charges for Docker Spaces on CPU
+(HTTP 402, "requires a PRO subscription" in November 2026), and static Spaces cannot run a model. The Docker files stay in `deploy/space/`
+for anyone with a PRO account; they were verified locally but never built on Hugging Face.
+
+## What is where
+
+| Place | Visibility | Holds |
+|---|---|---|
+| This GitHub repository | public | code, tests, configuration, this documentation. No data, weights, patient tables or tissue images |
+| Streamlit Community Cloud app | public | runs the code of this repository |
 | Hugging Face model repository | **private** | the 15 ensemble members, the input-check statistics, ImageNet ResNet-18 weights, six sample images |
 
-The Space reads the private repository with a read-only token that is stored as a **Space secret** (never in a file or in the image's
-public layers), at build time when the build is given the secret and otherwise when the container starts (`deploy/space/fetch_assets.py`).
+The app downloads the private repository at its first start, with a read-only token stored as a **Streamlit secret** (never in a file of
+this repository), into the app folder, or into a temporary folder when that is not writable (`src/demo/assets.py`). The download and
+the model load are cached for the life of the process; one analysis runs at a time, which also bounds memory.
 
-> **Status.** The private repository exists and the deployment files are verified locally, but the Space itself has not been created: in
-> November 2026 Hugging Face refused to create a Docker Space on free CPU hardware (HTTP 402, "requires a PRO subscription"). Static Spaces
-> are free but cannot run the model.
+## Deploying
 
-## Why a Docker Space and not Streamlit
+1. On huggingface.co create a **fine-grained token** with read access to the private repository only.
+2. On share.streamlit.io choose *New app*, pick this repository, branch `main`, main file `deploy/streamlit/streamlit_app.py`.
+3. In *Advanced settings* choose **Python 3.12** (the two PyTorch lines in `deploy/streamlit/requirements.txt` are CPU wheels for 3.12) and
+   put the secrets in the box:
 
-The service is already an HTTP API plus a purpose-built page. A Docker Space runs it unchanged on port 7860. Streamlit would mean
-rewriting the interface, and Streamlit Community Cloud's memory (about 1 GB) is too small for PyTorch with a 15-model ensemble; the free
-Space gives 2 vCPU and 16 GB.
+   ```toml
+   HF_TOKEN = "hf_..."
+   PTIC_ASSETS_REPO = "<user>/<private repository>"   # optional if it is the default in streamlit_app.py
+   ```
 
-## Public mode
-
-Environment variables read by the app (all optional; the defaults are the internal setup):
-
-| Variable | Public Space | Effect |
-|---|---|---|
-| `PTIC_DEMO_PUBLIC` | `1` | no patient number, image id or example title in any response |
-| `PTIC_DEMO_FRAME_ANCESTORS` | `https://huggingface.co https://*.hf.space` | lets the Space page embed the app; the default is `'none'` |
-| `PTIC_DEMO_DEVICE` | `cpu` | |
-| `PTIC_DEMO_MAX_MB` / `PTIC_DEMO_MAX_MPIX` | `25` / `40` | upload limits; whole slides are refused |
-| `OMP_NUM_THREADS` | `2` | fixed before PyTorch starts, as the free hardware has 2 vCPU |
-
-Uploads are read into memory, scored and dropped. One prediction runs at a time. The internal demo's reference heat-map figures have patient
-numbers drawn into them, so the public Space does not get them: the page hides its "Reference heat maps" panel when the server has none.
+`deploy/streamlit/requirements.txt` sits next to the entry point, so Community Cloud uses it instead of the root `requirements.txt`. It
+pins the CPU build of PyTorch by URL, so no installer can pick the multi-gigabyte CUDA build from PyPI. `.streamlit/config.toml` turns the
+file watcher off (it trips over `torch.classes`), caps uploads at 25 MB and hides error tracebacks from visitors.
 
 ## Verified before publishing
 
-The exported Space tree was run in a clean virtual environment (no system packages) with the released CPU build of PyTorch
-(2.11.0+cpu), pinned to 2 cores, against the GPU run the project was developed on:
+On the machine that built the project, in a brand-new Python 3.12 environment made with `uv` (the installer Community Cloud tries first)
+from `deploy/streamlit/requirements.txt` alone, run on 2 CPU cores, with the model downloaded from the private repository:
 
-* the six built-in samples give the same answers; probabilities differ by at most 0.0001 (rounding in the fourth decimal);
-* a re-encoded upload scored by all 15 members gives the same answer;
-* `deploy/smoke_test.py` passes 22 of 22 checks (page and headers, health, sample list, each sample with Grad-CAM, a non-tissue upload
-  refused, a non-image refused, no patient field in any response);
-* the test suite passes on a bare checkout: 85 passed, 9 skipped (they need the dataset or the trained artifacts), 0 failed.
+* the install resolves to `torch 2.11.0+cpu` and installs no `nvidia-*`, `cuda` or `triton` package (1.3 GB on disk);
+* a browser (Playwright) drove the app: two sample images give "Papillary thyroid carcinoma detected" and "No papillary thyroid carcinoma
+  detected" at 99.9% confidence with their Grad-CAM; a non-tissue upload is refused with reasons; an upload that is not a known sample
+  is scored by all 15 models; no patient number appears anywhere on the page;
+* time per analysis on 2 cores: about 7 seconds for a sample (3 models) and about 24 seconds for an upload (15 models), with the heat map;
+* peak memory of the process (`VmHWM`) after all of the above: **1.38 GB**. Streamlit's own documentation lists up to about 2.7 GB per
+  app for Community Cloud (a February 2024 figure that may have changed); the limit in force was not checked;
+* the six built-in samples give the same answers as the GPU run the project was developed on, with probabilities within 0.0001 on the
+  released CPU build of PyTorch;
+* the test suite passes on a bare checkout (102 passed, 10 skipped: they need the dataset, trained artifacts or Streamlit), and a test checks that the app says what is missing instead of crashing when the model files
+  or the secret are absent.
 
-Latency on 2 cores, measured: about 6 seconds for a built-in sample with its heat map (3 models), about 25 seconds for an upload (15 models).
+Not verified until the app is deployed: Community Cloud's actual memory, CPU and disk limits, the first start's download time there, and
+how long the app takes to wake after it has been put to sleep for inactivity.
 
-## Checking a running deployment
+## Privacy
 
-```bash
-python3 deploy/smoke_test.py https://<user>-<space>.hf.space           # about a minute
-python3 deploy/smoke_test.py https://<user>-<space>.hf.space --quick   # page, headers, health, sample list only
-```
-
-## Updating
-
-* **Code:** push to the Space repository; the Space rebuilds.
-* **Weights:** upload to the private repository, then *Factory reboot* the Space so the build fetches them again.
-* **Free-tier behaviour:** a Space that has been idle for a while is put to sleep and wakes on the next visit (about a minute).
+* The Streamlit app never receives a patient number or image id: its list of known sample files holds only a file hash, a
+  cross-validation fold and the dataset's class.
+* The FastAPI service has a public mode (`PTIC_DEMO_PUBLIC=1`) that removes patient numbers, image ids and example titles from every
+  response, and `PTIC_DEMO_FRAME_ANCESTORS` to allow embedding by a named host; `deploy/smoke_test.py <url>` checks a running FastAPI
+  service for both.
+* The reference heat-map figures of the internal demo have patient numbers drawn into them, so they are not part of any public
+  deployment.
+* Uploaded images are read into memory, scored and dropped.

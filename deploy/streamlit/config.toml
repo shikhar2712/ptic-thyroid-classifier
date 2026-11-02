@@ -1,0 +1,16 @@
+# Copied to .streamlit/config.toml at the repository root: Community Cloud reads the configuration from there.
+[server]
+fileWatcherType = "none"      # Streamlit's file watcher trips over torch.classes
+maxUploadSize = 25            # MB
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
+
+[client]
+showErrorDetails = false      # no tracebacks on the public page
+toolbarMode = "minimal"
+
+[theme]
+base = "light"
+primaryColor = "#0f62fe"

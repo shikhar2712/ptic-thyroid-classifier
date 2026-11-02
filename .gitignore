@@ -24,3 +24,5 @@ venv/
 .env
 .env.*
 .cache/
+.streamlit/secrets.toml
+secrets.toml

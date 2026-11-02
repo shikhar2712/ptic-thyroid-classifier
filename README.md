@@ -4,9 +4,9 @@ A leakage-safe deep-learning pipeline, a small CNN, a safety gate and a web demo
 as **PTC-like** (papillary thyroid carcinoma) or **non-PTC-like**, built on the public
 [PathoTiroid Dataset Indonesian Collection (PTIC)](https://doi.org/10.5281/zenodo.18827019).
 
-**Live demo:** not hosted yet. The web demo runs locally, and the files for a Hugging Face Docker Space (Dockerfile, asset loader,
-smoke test) are in [`deploy/`](deploy/). Hugging Face now charges for Docker Spaces on CPU, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-On 2 CPU cores, measured: about 6 seconds for a sample image and 25 seconds for an upload.
+**Live demo:** not hosted yet. A Streamlit app for Streamlit Community Cloud is ready in [`deploy/streamlit/`](deploy/streamlit/) and the
+web demo also runs locally; see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). On 2 CPU cores, measured: about 7 seconds for a sample image
+and 24 seconds for an upload.
 
 > **Research project. Not a medical device. Not for diagnosis.** The model describes how a patch of tissue looks to a network trained on
 > 1,006 patches from 24 patients scanned at one hospital on one scanner. It says nothing about a patient.
@@ -30,8 +30,8 @@ The model is small and its test score is high. What the project is really about 
 * **An external test on other hospitals' scans** (20 TCGA-THCA and 20 GTEx slides, 400 regions). The model does **not** carry over: see
   below. That finding is why the demo has an input gate that refuses what it does not recognise.
 * **A product around it:** an 11-check input gate, a 15-model ensemble, Grad-CAM heat maps, a FastAPI service with a hand-built
-  accessible UI (light and dark), automated tests, and a container deployment that keeps weights and patient-linked data out of every
-  public repository.
+  accessible UI (light and dark), a Streamlit front end, automated tests, and deployment files that keep weights and patient-linked
+  data out of every public repository.
 
 ## Results
 
@@ -120,9 +120,10 @@ src/evaluation/  metrics (patient-cluster bootstrap), shortcut baselines, stress
 src/inference/   tiled inference, the input gate, predictor, command-line tool, deployment export
 src/explain/     Grad-CAM
 src/external/    external test on TCGA / GTEx slides
-src/demo/        FastAPI app + static front end
-tests/           95 tests (85 run without the dataset)
-deploy/          Dockerfile and asset loader for the Hugging Face Space, smoke test for a running demo
+src/demo/        FastAPI app + static front end; answers.py (the wording) and assets.py (private-file loader) shared with Streamlit
+tests/           automated tests (most run without the dataset)
+deploy/streamlit Streamlit app for Community Cloud (+ its pinned requirements)
+deploy/space     Dockerfile and asset loader for a Hugging Face Docker Space (needs a PRO account), deploy/smoke_test.py
 docs/            deployment notes and figures
 ```
 
@@ -130,7 +131,7 @@ docs/            deployment notes and figures
 
 ```bash
 pip install -r requirements.txt          # Python 3.12
-python -m pytest -q                      # 85 tests run on a bare checkout; 9 need the dataset or trained artifacts and skip themselves
+python -m pytest -q                      # 102 tests pass on a bare checkout; 10 need the dataset, trained artifacts or Streamlit and skip themselves
 ```
 
 The dataset and the trained weights are **not** in this repository. To reproduce the pipeline, download PTIC and run the stages
@@ -146,7 +147,8 @@ python3 -I src/evaluation/test_evaluation.py                   # the one-time fi
 
 Training is gated: nothing starts without `--confirm`. One 15-model run took about half an hour on a shared A100 MIG slice. Once models
 are exported (`src/inference/export_deploy.py`) and the gate is fitted (`src/inference/calibrate_gate.py`), `scripts/run_demo_server.sh start`
-serves the web demo and `python3 -I src/inference/cli.py patch.jpg --magnification 40x` scores a file.
+serves the web demo and `python3 -I src/inference/cli.py patch.jpg --magnification 40x` scores a file. The Streamlit front end runs with
+`streamlit run deploy/streamlit/streamlit_app.py` (it downloads the model files from a private repository you point it at).
 
 Environment: the reported experiments ran in an NVIDIA NGC PyTorch container (torch 2.11.0a0, CUDA 13.1). The demo is checked against the
 released CPU build pinned in `requirements.txt`: on the six built-in samples it gives the same answers as the GPU run, with probabilities
@@ -156,7 +158,7 @@ within 0.0001. Details: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 * No image, patient table, split definition, prediction file or trained weight is in this repository, and `.gitignore` and the
   release scripts keep it that way.
-* The Space deployment downloads the weights, the gate's statistics and the six sample images from a **private** repository with a secret token.
+* The deployments download the weights, the gate's statistics and the six sample images from a **private** repository with a secret token.
   The public API and the page return no patient number, image id or example title, and the reference figures that have patient numbers
   drawn into them are not served.
 * The dataset is CC BY-SA 4.0 and must be obtained from Zenodo. Uploaded images are read into memory, scored and dropped: nothing is
