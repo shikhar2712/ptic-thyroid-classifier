@@ -1,0 +1,30 @@
+# Python 3.12. Install with:  pip install -r requirements.txt
+# The CPU build of PyTorch is enough for everything except training (a GPU is optional); for CUDA builds drop the index line and
+# follow https://pytorch.org/get-started/locally/. The reported experiments ran on an NVIDIA NGC PyTorch container (torch 2.11.0a0,
+# CUDA 13.1); the web demo is verified against the released CPU build pinned below (see docs/DEPLOYMENT.md).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.11.0
+torchvision==0.26.0
+numpy==2.1.0
+pandas==3.0.1
+scikit-learn==1.8.0
+scipy==1.17.0
+pillow==12.1.1
+matplotlib==3.10.8
+PyYAML==6.0.1
+tqdm==4.67.3
+requests==2.32.5
+
+# Web demo (src/demo)
+fastapi==0.159.1
+starlette==1.9.0
+uvicorn==0.54.0
+pydantic==2.12.5
+huggingface_hub==2.4.0
+
+# Tests
+pytest==8.1.1
+httpx==0.28.1
+
+# Only for the external test on TCGA / GTEx slides (src/external); not needed for training, evaluation or the demo
+# idc-index==0.13.4  duckdb==1.5.6  s5cmd==0.3.3  pydicom==3.0.2

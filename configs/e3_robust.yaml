@@ -1,0 +1,20 @@
+# E3 = E1 (configs/e1_residual.yaml) + the robustness augmentations DECLARED in reports/07_robustness.md section 1.2, before any
+# stress-test result existed. Nothing here was chosen from stress-test results or from how test patients look.
+#   stain strength +/-10% (was 3%) | brightness/contrast +/-15% (was 10%) | saturation x0.8-1.2 | Gaussian blur sigma 0-1 px on half
+#   the crops | magnification jitter x0.9-1.1 (scanner calibration differences; large mismatches are handled by rescaling in the
+#   predictor, because nucleus size is itself a PTC feature).
+# Held out from training (evaluation only): JPEG, white balance, gamma, hue, grayscale, sensor noise.
+model:
+  name: residual_cnn
+aug:
+  hed_sigma: 0.10
+  brightness: 0.15
+  contrast: 0.15
+  saturation: 0.2
+  blur_sigma_max: 1.0
+  blur_p: 0.5
+  scale_jitter: 0.1
+early_stopping:
+  patience: 1000
+output:
+  run_name: e3_robust

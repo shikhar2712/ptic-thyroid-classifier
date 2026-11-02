@@ -1,0 +1,53 @@
+# Default training configuration. NOTHING here has been tuned; values are conservative starting points.
+# A full run still requires explicit approval (see README / Report 3).
+seed: 0
+fold: 0                     # outer CV fold whose *test* patients are held out
+split_file: data/splits/folds_v1.csv
+deterministic: false        # true -> deterministic algorithms (slower) + CUBLAS_WORKSPACE_CONFIG
+precision: bf16             # bf16 autocast on A100; 'fp32' disables
+
+model:
+  name: residual_cnn        # small_cnn | residual_cnn | resnet18
+  in_channels: 3
+  num_classes: 2
+  dropout: 0.2
+
+data:
+  crop: 256                 # training crop side in *output* pixels
+  scale: 1.0                # 1.0 = native 0.26 um/px; 0.5 halves resolution (experiment, not default)
+  crops_per_image: 4        # random crops drawn per image per epoch
+  balance: none             # none | sqrt | equal  (patient-balanced sampling)
+  batch_size: 64
+  num_workers: 0            # /dev/shm is 64 MB here; see report 02
+  eval_tile: 256
+  eval_batch_images: 8
+
+aug:
+  flip: true
+  rot90: true
+  brightness: 0.10
+  contrast: 0.10
+  hed_sigma: 0.03           # mild stain jitter; 0 disables
+  # no zoom / scale jitter on purpose
+
+optim:
+  name: adamw
+  lr: 0.001
+  weight_decay: 0.0001
+  epochs: 30
+  warmup_epochs: 1
+  grad_clip: 1.0
+
+early_stopping:
+  metric: val_auroc         # validation partition only (never the outer test fold)
+  patience: 8
+
+output:
+  root: checkpoints         # run dir = <root>/<run_name>/fold<k>
+  run_name: default
+  log_root: logs
+resume: true
+
+smoke:
+  max_train_steps: null     # int -> stop each epoch early (smoke tests only)
+  max_val_images: null

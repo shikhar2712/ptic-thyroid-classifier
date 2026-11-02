@@ -1,0 +1,26 @@
+# Data, patient-linked metadata, weights and local state never go into this repository
+/data/
+/checkpoints/
+/artifacts/
+/logs/
+/backups/
+/reports/
+/notebooks/
+*.zip
+*.pt
+*.pth
+*.ckpt
+*.npy
+*.npz
+*.csv
+*.csv.gz
+# Python / tooling
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+.venv/
+venv/
+.env
+.env.*
+.cache/

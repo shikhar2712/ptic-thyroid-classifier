@@ -1,0 +1,16 @@
+# E2: identical to E1 (configs/e1_residual.yaml) EXCEPT pixel size. scale 0.25 -> 1.04 um/px (native 0.26 um/px).
+# crop 64 / eval_tile 64 keep E1's geometry exactly: each training crop and each evaluation tile covers the same 66.6 um of tissue
+# (source side round(64/0.25) = 256 px, as in E1), 28 evaluation tiles per image, 91% of the image covered. With the default
+# crop 256 the field of view would grow 4x and evaluation would use 1 tile per image covering only 52% of it.
+# Same seeds / folds / epochs (30, early stopping disabled) / crops per image / batch / optimiser / augmentation as E1.
+# Protocol and reading rules: reports/05_e2_lowres.md (declared before launch).
+model:
+  name: residual_cnn
+data:
+  scale: 0.25
+  crop: 64
+  eval_tile: 64
+early_stopping:
+  patience: 1000
+output:
+  run_name: e2_residual_lowres

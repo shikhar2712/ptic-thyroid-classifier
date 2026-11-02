@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Thyroid patch check</title>
+<link rel="icon" href="static/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="static/fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<script src="static/theme.js"></script>
+<link rel="stylesheet" href="static/style.css">
+<script src="static/app.js" defer></script>
+</head>
+<body>
+<div class="utility"><p class="utility-in">Research use only. <strong>Not a medical device</strong> and not for diagnosis.</p></div>
+<header class="bar">
+  <div class="bar-in">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.2 4.5c2.4-.6 4.3 1.6 4.9 4.4.3 1.5.9 2.3 1.9 2.3s1.6-.8 1.9-2.3c.6-2.8 2.5-5 4.9-4.4 2.6.7 3.4 4.8 2.6 8.7-.9 4.3-3.4 6.8-5.6 6.3-1.4-.3-2.1-1.6-3.8-1.6s-2.4 1.3-3.8 1.6c-2.2.5-4.7-2-5.6-6.3-.8-3.9 0-8 2.6-8.7z"/></svg>
+      <h1>Thyroid patch check</h1>
+    </div>
+    <div class="bar-actions">
+      <button type="button" class="btn-icon theme-btn" id="theme" aria-pressed="false" aria-label="Dark mode" title="Dark mode">
+        <svg class="i-moon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 1.3a6.8 6.8 0 1 0 8.5 8.5A5.6 5.6 0 0 1 6.2 1.3z"/></svg>
+        <svg class="i-sun" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M7.3 0h1.4v2.6H7.3zM7.3 13.4h1.4V16H7.3zM0 7.3h2.6v1.4H0zM13.4 7.3H16v1.4h-2.6zM2.2 3.2l1-1 1.9 1.9-1 1zM10.9 11.9l1-1 1.9 1.9-1 1zM2.2 12.8l1.9-1.9 1 1-1.9 1.9zM10.9 4.1l1.9-1.9 1 1-1.9 1.9z"/></svg>
+      </button>
+      <button type="button" class="btn btn-ghost" id="about-open" aria-haspopup="dialog">About</button>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="card stage-card" id="stage-card" aria-labelledby="stage-title">
+    <div class="card-head">
+      <h2 id="stage-title">Image</h2>
+      <p class="meta" id="stage-meta"></p>
+      <button type="button" class="btn btn-ghost btn-compact" id="upload-btn" hidden>Upload image</button>
+    </div>
+
+    <div class="stage" id="stage">
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept="image/jpeg,image/png,image/tiff,.jpg,.jpeg,.png,.tif,.tiff">
+        <svg class="drop-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M15 26V9.8l-5.6 5.6L8 14l8-8 8 8-1.4 1.4L17 9.8V26z"/><path d="M4 4h24v2H4z"/></svg>
+        <span class="drop-title">Drop an H&amp;E thyroid scan here or <span class="link">browse</span></span>
+        <span class="meta">JPEG, PNG or TIFF up to <span id="limit">40</span> MB · or pick a sample image below</span>
+      </label>
+      <img class="layer" id="hm-scan" alt="" hidden>
+      <p class="stage-note" id="stage-note" hidden>No preview for this file type. It can still be analyzed.</p>
+      <div class="fx" id="fx" aria-hidden="true"><div class="fx-sweep"></div><span class="tag fx-label"><span class="spin"></span>Analyzing</span></div>
+    </div>
+
+    <div class="pair" id="pair" hidden>
+      <figure><img id="pair-scan" alt="The selected image"><figcaption>Selected image</figcaption></figure>
+      <figure><img id="pair-heat" alt="The selected image with the Grad-CAM over it: evidence for PTC, drawn over a black-and-white copy"><figcaption>Grad-CAM</figcaption></figure>
+    </div>
+
+    <div class="stage-foot">
+      <div class="go-row" id="go-row">
+        <fieldset class="seg-field" id="scale" hidden>
+          <legend>Scanned at</legend>
+          <div class="seg">
+            <label><input type="radio" name="scale" value="40x"><span>40× <small>0.25 µm/px</small></span></label>
+            <label><input type="radio" name="scale" value="20x"><span>20× <small>0.5 µm/px</small></span></label>
+            <label><input type="radio" name="scale" value="mpp"><span>Exact size</span></label>
+          </div>
+        </fieldset>
+        <div class="field mpp" id="mpp-row" hidden>
+          <label for="mpp">µm per pixel</label>
+          <input type="number" id="mpp" min="0.05" max="5" step="0.001" placeholder="e.g. 0.252" inputmode="decimal">
+        </div>
+        <button type="button" class="btn btn-primary" id="analyze" disabled aria-describedby="go-hint">Analyze the image</button>
+        <p class="hint" id="go-hint">Upload an image or pick a sample image below.</p>
+      </div>
+
+      <ol class="steps" id="steps" aria-label="Analysis progress" hidden>
+        <li><span class="st-ic" aria-hidden="true"></span><span class="st-txt"><span class="st-name">Quality checks</span><span class="st-sub"></span></span></li>
+        <li><span class="st-ic" aria-hidden="true"></span><span class="st-txt"><span class="st-name">Scoring</span><span class="st-sub"></span></span></li>
+        <li><span class="st-ic" aria-hidden="true"></span><span class="st-txt"><span class="st-name">Heat map</span><span class="st-sub"></span></span></li>
+      </ol>
+
+      <div class="viewer-foot" id="viewer-foot" hidden>
+        <div class="key-row">
+          <ul class="key" aria-label="Colour key">
+            <li><span class="sw sw-low" aria-hidden="true"></span>No evidence for PTC</li>
+            <li><span class="sw sw-mid" aria-hidden="true"></span>Some</li>
+            <li><span class="sw sw-high" aria-hidden="true"></span>Strong</li>
+          </ul>
+          <p class="hint" id="hm-note">Shows where the model found evidence, not why.</p>
+        </div>
+      </div>
+      <p class="no-map" id="no-map" hidden></p>
+
+      <div class="field" id="token-row" hidden>
+        <label for="token">Access code</label>
+        <input type="password" id="token" autocomplete="off" spellcheck="false" aria-describedby="token-hint">
+        <p class="hint" id="token-hint">This browser remembers the code once it has worked.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card result" id="result" aria-labelledby="result-title">
+    <div class="card-head"><h2 id="result-title">Result</h2>
+      <p class="conf" id="conf" hidden><span class="conf-num" id="conf-num"></span><span class="conf-label">confidence</span></p></div>
+
+    <div id="empty" class="empty">
+      <p class="empty-lead" id="empty-lead">No image analyzed yet. Upload one or pick a sample image below.</p>
+      <dl class="guide">
+        <div><dt>Grad-CAM</dt><dd>
+          <p>Where the model found evidence for PTC, drawn over a black-and-white copy of the tissue.</p>
+          <ul class="key" aria-label="Colour key">
+            <li><span class="sw sw-low" aria-hidden="true"></span>No evidence</li>
+            <li><span class="sw sw-mid" aria-hidden="true"></span>Some</li>
+            <li><span class="sw sw-high" aria-hidden="true"></span>Strong</li>
+          </ul></dd></div>
+      </dl>
+    </div>
+
+    <div id="busy" class="busy" hidden>
+      <p class="busy-text" id="busy-text">Analyzing…</p>
+      <div class="sk sk-verdict"></div><div class="sk sk-line"></div>
+    </div>
+
+    <div id="out" class="out" aria-live="polite" hidden>
+      <div class="verdict-row">
+        <p class="verdict" id="verdict"><span class="dot" id="verdict-dot" aria-hidden="true"></span><span id="verdict-text"></span></p>
+        <p class="note" id="note" hidden></p>
+      </div>
+      <ul class="reasons" id="reasons"></ul>
+    </div>
+
+    <section class="about-result" id="chat" aria-labelledby="chat-title" hidden>
+      <h3 id="chat-title">About this result</h3>
+      <div class="qa" id="qa"></div>
+    </section>
+  </section>
+</main>
+
+<section class="dock" id="examples-card" aria-labelledby="ex-title" hidden>
+  <h2 id="ex-title" class="sr-only">Sample images</h2>
+  <div class="strip" id="strip"><div class="track" id="examples"></div></div>
+</section>
+
+<footer class="foot">
+  <div class="foot-in">
+    <p class="foot-name">Thyroid patch check</p>
+    <p>For research use only. Not a medical device and not for diagnosis. Images are checked in memory and never stored.</p>
+    <p>Sample images: PTIC (Shabrina et al., CC BY-SA 4.0). Typeface: IBM Plex Sans (SIL Open Font License 1.1).</p>
+  </div>
+</footer>
+
+<dialog id="about" aria-labelledby="about-title">
+  <div class="about-head">
+    <h2 id="about-title">About</h2>
+    <button type="button" class="btn btn-ghost" id="about-close">Close</button>
+  </div>
+  <div class="about-body">
+    <p>This research tool describes whether one H&amp;E image of thyroid tissue <em>looks</em> like papillary thyroid carcinoma (PTC). It learned from 1,006
+      clear-cut patches of 24 patients, scanned at one hospital on one scanner (Leica GT450, 40×). <strong>Not a medical device and
+      not for diagnosis:</strong> it describes how a patch looks, not a patient's diagnosis, and it has not been validated on other
+      hospitals, scanners or stains. Such images are refused on purpose.</p>
+    <p>Images from the PTIC dataset are scored only by the models that never saw that patient, so their answers are fair. Any other
+      image is scored by the whole ensemble (<span id="about-model">E3</span>). A PTIC image is recognised only as the original,
+      unchanged file: a cropped, re-saved or screenshot copy is scored by the whole ensemble, most of which learned from that patient,
+      so its answer can look better than it should.</p>
+
+    <h3>Heat maps</h3>
+    <p>A heat map (Grad-CAM) colours each part of an image by how much it pushed the model towards PTC: blue means none, yellow
+      to red means strong. The map is smoothed for display and uses one colour scale for every image. It is made only for answered
+      images. A heat map shows <em>where</em>, not <em>why</em>, and it <strong>cannot rule out the main worry</strong>: if the model had
+      learned the colour of PTIC's stain or scanner, the map would still “look at the cells”, because that colour is everywhere in the
+      tissue.</p>
+    <details class="refs" id="refs">
+      <summary>Reference heat maps of 29 images (Report 11)</summary>
+      <p class="hint">Made once, offline, for 29 images chosen in advance. These pictures are not made for your upload. Click a picture
+        to open it full size.</p>
+      <figure>
+        <a href="api/figures/gradcam_random" target="_blank" rel="noopener"><img data-src="api/figures/gradcam_random" width="1760" height="1782"
+          alt="Heat maps of 12 random PTIC images: yellow and red over most of the tissue on the 6 PTC images, blue all over on the 6 Non-PTC images"></a>
+        <figcaption>Twelve random PTIC images. PTC images show evidence over most of the tissue; the Non-PTC images stay
+          blue.</figcaption>
+      </figure>
+      <figure>
+        <a href="api/figures/gradcam_patient1" target="_blank" rel="noopener"><img data-src="api/figures/gradcam_patient1" width="1760" height="1243"
+          alt="Heat maps of 8 images from patient 1: mostly blue with small light spots on the 4 images the first model missed, yellow and red across the tissue on the 4 it got right"></a>
+        <figcaption>Patient 1, the known weak spot. Top rows: the 4 images the first model missed, with little evidence because
+          evidence for and against almost cancels out. Bottom rows: 4 images it got right.</figcaption>
+      </figure>
+      <figure>
+        <a href="api/figures/gradcam_outside" target="_blank" rel="noopener"><img data-src="api/figures/gradcam_outside" width="1760" height="1512"
+          alt="Heat maps of 9 regions from other hospitals: yellow to red on three regions of one cancer slide, blue on the other six"></a>
+        <figcaption>Scans from other hospitals, scored with the safety checks off (this page refuses them). On the one slide the model
+          called PTC, part of the evidence lies on material without cells; the maps on normal slides are not reliable.</figcaption>
+      </figure>
+    </details>
+
+    <h3>Credits</h3>
+    <p class="hint">PTIC images: Shabrina et al., Zenodo 10.5281/zenodo.18827019, CC BY-SA 4.0. TCGA-THCA (The Cancer Genome Atlas
+      Research Network, CC BY 3.0) and GTEx (the GTEx Consortium, CC BY 4.0), both via the NCI Imaging Data Commons. Typeface: IBM
+      Plex Sans (SIL Open Font License 1.1). Visual style after IBM's Carbon, from the Awesome DESIGN.md collection (MIT).</p>
+  </div>
+</dialog>
+</body>
+</html>

@@ -1,0 +1,35 @@
+# Data acquisition / layout. Paths are relative to the project root unless absolute.
+zenodo:
+  record_id: 18827019
+  doi: 10.5281/zenodo.18827019
+  api_url: https://zenodo.org/api/records/18827019
+  archive_name: "PTIC Dataset.zip"
+  doc_names:
+    - "Data file 1-Data Collection and Preparation Workflow.pdf"
+    - "Data File 2-Data organization.jpg"
+    - "Data file 3-PTIC_metadata.xlsx"
+  license: CC-BY-SA-4.0
+
+paths:
+  raw_docs: data/raw/docs          # small documents, as published
+  raw_archive: data/raw/archive    # the zip, as published
+  raw_images: data/raw/images      # extraction target; must be new/empty
+  metadata: data/metadata
+  processed: data/processed
+  splits: data/splits
+  reports: reports
+  logs: logs
+
+labels:
+  # folder name in the archive -> (class name, numeric label)
+  "PTC-like": {name: "PTC-like", id: 1}
+  "Non PTC-like": {name: "Non-PTC-like", id: 0}
+  # xlsx label strings -> same class names
+  xlsx_map: {"PTC": "PTC-like", "Non-PTC": "Non-PTC-like"}
+
+filename_regex: '^(?P<patient>\d+)_(?P<wsi>\d+) \((?P<patch>\d+)\)\.jpg$'
+expected:
+  n_images: 1006
+  n_ptc_like: 490
+  n_non_ptc_like: 516
+  image_size_wh: [1916, 1053]

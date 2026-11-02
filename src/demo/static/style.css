@@ -1,0 +1,359 @@
+/* Thyroid patch check. Look: IBM / Carbon, from the project's DESIGN.md (Awesome DESIGN.md, "ibm"): white tiles on a light grey
+   ground, charcoal ink, IBM Blue (#0f62fe) only on the primary action, links, focus and progress, square corners, 1px hairlines and
+   no shadows, IBM Plex Sans with light-weight display type. Colour beyond that is data only: the answer's status, the score zones
+   and the heat map. */
+
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 300; font-display: swap; src: url("fonts/ibm-plex-sans-latin-300-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/ibm-plex-sans-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/ibm-plex-sans-latin-600-normal.woff2") format("woff2"); }
+
+/* Light is Carbon's White theme; dark is Carbon's Gray 100 theme. The theme follows the system unless the visitor picks one with
+   the button in the top bar (static/theme.js sets data-theme before the page paints). */
+:root {
+  color-scheme: light;
+  --page: #f4f4f4;
+  --header: #ffffff;
+  --canvas: #ffffff;
+  --field: #f4f4f4;
+  --surface-1: #f4f4f4;
+  --surface-2: #e0e0e0;
+  --hover: #e8e8e8;
+  --pressed: #c6c6c6;
+  --ink: #161616;
+  --muted: #525252;
+  --hairline: #e0e0e0;
+  --border-input: #8d8d8d;
+  --primary: #0f62fe;
+  --primary-hover: #0050e6;
+  --primary-pressed: #002d9c;
+  --link: #0f62fe;
+  --link-hover: #0043ce;
+  --focus: #0f62fe;
+  --selected-bg: #161616;
+  --selected-ink: #ffffff;
+  --selected-muted: #c6c6c6;
+  --disabled-bg: #c6c6c6;
+  --disabled-ink: #525252;
+  --veil: rgba(255, 255, 255, .9);
+  --backdrop: rgba(22, 22, 22, .5);
+  --foot: #161616;
+  --success: #24a148;
+  --warning: #f1c21b;
+  --error: #da1e28;
+  --success-bg: #defbe6;
+  --warning-bg: #fcf4d6;
+  --error-bg: #fff1f1;
+  --info-bg: #edf5ff;
+  --info-border: #0043ce;
+  --font: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #161616; --header: #161616; --canvas: #262626; --field: #393939; --surface-1: #333333; --surface-2: #393939;
+  --hover: #333333; --pressed: #525252; --ink: #f4f4f4; --muted: #c6c6c6; --hairline: #393939; --border-input: #6f6f6f;
+  --primary-hover: #0353e9; --link: #78a9ff; --link-hover: #a6c8ff; --focus: #ffffff;
+  --selected-bg: #f4f4f4; --selected-ink: #161616; --selected-muted: #525252; --disabled-bg: #525252; --disabled-ink: #a8a8a8;
+  --veil: rgba(38, 38, 38, .9); --backdrop: rgba(0, 0, 0, .7); --foot: #000000;
+  --success: #42be65; --error: #fa4d56; --success-bg: #1b3a27; --warning-bg: #3d3416; --error-bg: #3e1d20; --info-bg: #1c2c4a;
+  --info-border: #4589ff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #161616; --header: #161616; --canvas: #262626; --field: #393939; --surface-1: #333333; --surface-2: #393939;
+    --hover: #333333; --pressed: #525252; --ink: #f4f4f4; --muted: #c6c6c6; --hairline: #393939; --border-input: #6f6f6f;
+    --primary-hover: #0353e9; --link: #78a9ff; --link-hover: #a6c8ff; --focus: #ffffff;
+    --selected-bg: #f4f4f4; --selected-ink: #161616; --selected-muted: #525252; --disabled-bg: #525252; --disabled-ink: #a8a8a8;
+    --veil: rgba(38, 38, 38, .9); --backdrop: rgba(0, 0, 0, .7); --foot: #000000;
+    --success: #42be65; --error: #fa4d56; --success-bg: #1b3a27; --warning-bg: #3d3416; --error-bg: #3e1d20; --info-bg: #1c2c4a;
+    --info-border: #4589ff;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+.layout * { scroll-margin-bottom: 200px; }   /* a focused field or button is never parked under the docked strip */
+body { margin: 0; background: var(--page); color: var(--ink); font: 400 14px/20px var(--font); letter-spacing: 0.16px;
+  font-variant-numeric: tabular-nums; }
+h1, h2, h3, p, figure, dl, dd { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+button, input { font: inherit; color: inherit; letter-spacing: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+a { color: var(--link); }
+a:hover { color: var(--link-hover); }
+.meta, .hint { color: var(--muted); font-size: 14px; line-height: 18px; letter-spacing: 0.16px; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%);
+  white-space: nowrap; }
+
+/* --- utility bar and top nav ------------------------------------------------------------------------------------------------- */
+.utility { background: var(--surface-2); }
+.utility-in { max-width: 1312px; margin: 0 auto; padding: 8px 32px; color: var(--muted); font-size: 12px; line-height: 16px; letter-spacing: 0.32px; }
+.utility-in strong { color: var(--ink); font-weight: 600; }
+.bar { background: var(--header); border-bottom: 1px solid var(--hairline); }
+.bar-in { max-width: 1312px; margin: 0 auto; padding: 0 16px 0 32px; height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.mark { width: 20px; height: 20px; fill: var(--ink); flex: none; }
+h1 { font-size: 16px; line-height: 22px; font-weight: 600; letter-spacing: 0; }
+.bar-actions { display: flex; align-items: center; }
+.theme-btn { width: 48px; height: 48px; }
+.theme-btn .i-sun, .theme-btn[aria-pressed="true"] .i-moon { display: none; }
+.theme-btn[aria-pressed="true"] .i-sun { display: block; }
+
+/* --- buttons ---------------------------------------------------------------------------------------------------------------------- */
+.btn { display: inline-flex; align-items: center; height: 48px; padding: 0 16px; border: 0; border-radius: 0; cursor: pointer;
+  font-size: 14px; line-height: 18px; transition: background-color .11s cubic-bezier(.2, 0, .38, .9); }
+.btn-primary { background: var(--primary); color: #fff; min-width: 180px; }
+.btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+.btn-primary:active:not(:disabled) { background: var(--primary-pressed); }
+.btn-primary:disabled { background: var(--disabled-bg); color: var(--disabled-ink); cursor: not-allowed; }
+.btn-ghost { background: transparent; color: var(--link); }
+.btn-ghost:hover { background: var(--hover); color: var(--link-hover); }
+.btn-ghost:active { background: var(--pressed); }
+.btn-compact { height: 40px; padding: 0 12px; }
+.btn-tertiary { height: 40px; background: transparent; color: var(--link); border: 1px solid var(--link); }
+.btn-tertiary:hover { background: var(--link); color: var(--selected-ink); }
+.btn-icon { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0;
+  background: transparent; color: var(--ink); cursor: pointer; }
+.btn-icon:hover { background: var(--hover); }
+.btn-icon svg { width: 16px; height: 16px; fill: currentColor; }
+
+/* --- two columns: the image on the left, the answer and the questions on the right; both cards end on the same line ------------- */
+.layout { max-width: 1312px; margin: 0 auto; padding: 24px 32px 48px; display: grid; gap: 16px;
+  grid-template-columns: minmax(0, 7fr) minmax(360px, 5fr); align-items: stretch; }
+.card { background: var(--canvas); border: 1px solid var(--hairline); padding: 24px; min-width: 0; display: flex; flex-direction: column; }
+.card-head { display: flex; align-items: center; gap: 12px; min-height: 40px; margin-bottom: 16px; }
+.card-head h2 { font-size: 20px; line-height: 28px; font-weight: 400; letter-spacing: 0; flex: none; }
+.card-head .meta { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-head .btn-compact { margin-left: auto; flex: none; }
+
+/* --- the stage: drop zone, then the image, the analysis animation and the heat map over it -------------------------------------- */
+.stage { --stage-h: max(220px, calc(100vh - 450px)); position: relative; width: 100%; aspect-ratio: var(--ar, 1.818);
+  max-height: var(--stage-h); background: var(--surface-1); overflow: hidden; touch-action: pan-y; flex: none; }
+.stage.over { outline: 2px solid var(--primary); outline-offset: -2px; }
+.stage .layer { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+.drop { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 24px; text-align: center; background: var(--canvas); border: 1px dashed var(--border-input); cursor: pointer;
+  transition: background-color .11s ease; }
+.drop:hover { background: var(--surface-1); }
+.drop:focus-within { outline: 2px solid var(--focus); outline-offset: -2px; }
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.drop-icon { width: 32px; height: 32px; fill: var(--muted); }
+.drop-title { font-size: 16px; line-height: 22px; }
+.drop .meta { line-height: 20px; }
+.link { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
+.stage-note { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+.tag { position: absolute; top: 8px; padding: 2px 8px; border-radius: 2px; background: #262626; color: #fff; font-size: 12px;
+  line-height: 16px; letter-spacing: 0.32px; pointer-events: none; }
+
+/* The analysis animation: a dimmed grid over the image, a scan line sweeping across it and cells lighting up as they are "read". */
+.fx { position: absolute; inset: 0; overflow: hidden; pointer-events: none; opacity: 0; visibility: hidden;
+  transition: opacity .25s ease, visibility 0s linear .25s; background-color: rgba(22, 22, 22, .22);
+  background-image: linear-gradient(rgba(255, 255, 255, .22) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .22) 1px, transparent 1px);
+  background-size: calc(100% / 12) calc(100% / 6); }
+.stage.analyzing .fx { opacity: 1; visibility: visible; transition: opacity .25s ease; }
+.fx-sweep { position: absolute; top: 0; bottom: 0; left: 0; width: 24%; transform: translateX(-100%);
+  background: linear-gradient(90deg, rgba(15, 98, 254, 0), rgba(15, 98, 254, .3) 82%, rgba(166, 200, 255, .95) 99%, #fff);
+  animation: sweep 1.8s cubic-bezier(.45, 0, .55, 1) infinite; }
+@keyframes sweep { to { transform: translateX(417%); } }
+.fx-cell { position: absolute; width: calc(100% / 12); height: calc(100% / 6); background: rgba(69, 137, 255, .35);
+  outline: 1px solid rgba(166, 200, 255, .9); outline-offset: -1px; opacity: 0; animation: cell 1.8s ease-in-out infinite; }
+@keyframes cell { 0%, 100% { opacity: 0; } 35%, 55% { opacity: 1; } }
+.fx-label { left: 8px; display: inline-flex; align-items: center; gap: 8px; }
+.fx-label .spin { width: 12px; height: 12px; border-width: 2px; border-color: rgba(255, 255, 255, .35); border-top-color: #fff; }
+
+/* --- under the stage: scale + button, then the progress steps, then the heat map's controls ------------------------------------- */
+/* --- after the answer: the selected image and the same image with the Grad-CAM over it, side by side ------------------------------- */
+/* The pair sits at the top of the card, so an open answer that makes the result card taller does not move the images. */
+.pair { --stage-h: max(220px, calc(100vh - 450px)); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; flex: none; }
+.pair figure { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.pair img { display: block; width: 100%; aspect-ratio: var(--ar, 1.818); max-height: var(--stage-h); object-fit: contain; background: var(--surface-1); }
+.pair figcaption { font-size: 14px; line-height: 20px; }
+@media (min-width: 1056px) {          /* the images need the room: the left card is wider while they are shown */
+  .layout.has-pair { grid-template-columns: minmax(0, 8fr) minmax(360px, 4fr); }
+}
+
+.stage-foot { margin-top: 16px; display: grid; gap: 12px; }
+.go-row { display: flex; align-items: flex-end; gap: 12px 16px; flex-wrap: wrap; }
+.go-row .hint { align-self: center; flex: 1 1 200px; }
+.seg-field { border: 0; padding: 0; margin: 0; min-width: 0; }
+.seg-field legend { padding: 0; margin-bottom: 4px; font-size: 12px; line-height: 16px; letter-spacing: 0.32px; color: var(--muted); }
+.seg { display: grid; grid-template-columns: repeat(3, minmax(88px, 1fr)); border: 1px solid var(--ink); background: var(--canvas); }
+.seg label { position: relative; }
+.seg label + label span { border-left: 1px solid var(--border-input); }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 46px; padding: 0 8px;
+  text-align: center; transition: background-color .11s ease; }
+.seg small { font-size: 12px; line-height: 16px; letter-spacing: 0.32px; color: var(--muted); }
+.seg label:hover span { background: var(--hover); }
+.seg input:checked + span { background: var(--selected-bg); color: var(--selected-ink); }
+.seg input:checked + span small { color: var(--selected-muted); }
+.seg input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: -3px; }
+.field { display: grid; gap: 4px; }
+.field label { font-size: 12px; line-height: 16px; letter-spacing: 0.32px; color: var(--muted); }
+.field input { height: 48px; padding: 0 16px; border: 0; border-bottom: 1px solid var(--border-input); border-radius: 0; background: var(--field); }
+.mpp input { width: 140px; }
+#token-row input { max-width: 320px; }
+
+/* Carbon's progress indicator: a line over each step, blue while it runs or once it passed. */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.steps li { display: flex; align-items: flex-start; gap: 8px; padding-top: 10px; border-top: 2px solid var(--hairline); min-height: 48px;
+  transition: border-color .2s ease; }
+.steps li.run, .steps li.seen, .steps li.ok { border-top-color: var(--primary); }
+.steps li.fail { border-top-color: var(--error); }
+.st-ic { position: relative; flex: none; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; border: 1px solid var(--muted); }
+.run .st-ic { border: 2px solid var(--surface-2); border-top-color: var(--primary); animation: spin .7s linear infinite; }
+.seen .st-ic { border-color: var(--primary); }
+.seen .st-ic::after { content: ""; position: absolute; left: 4px; top: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+.ok .st-ic { border-color: var(--primary); background: var(--primary); }
+.ok .st-ic::after { content: ""; position: absolute; left: 4.5px; top: 1.5px; width: 4px; height: 8px; border: solid #fff;
+  border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.fail .st-ic { border-color: var(--error); background: var(--error); }
+.fail .st-ic::after { content: "!"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 11px;
+  font-weight: 600; line-height: 1; }
+.skip .st-ic::after { content: ""; position: absolute; left: 3px; right: 3px; top: 6.5px; height: 1px; background: var(--muted); }
+.st-txt { display: grid; min-width: 0; }
+.st-name { font-size: 14px; line-height: 18px; }
+.skip .st-name, .wait .st-name { color: var(--muted); }
+.st-sub { font-size: 12px; line-height: 16px; letter-spacing: 0.32px; color: var(--muted); min-height: 16px; }
+.spin { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--surface-2); border-top-color: var(--primary);
+  border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.viewer-foot { display: grid; gap: 8px; }
+.key-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 24px; }
+.key { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; letter-spacing: 0.32px; }
+.key li { display: flex; align-items: center; gap: 8px; }
+.sw { width: 12px; height: 12px; flex: none; }
+.sw-low { background: #00007f; }
+.sw-mid { background: #c1ff36; outline: 1px solid rgba(22, 22, 22, .2); outline-offset: -1px; }
+.sw-high { background: #ee0000; }
+.key-row .hint { font-size: 12px; line-height: 16px; letter-spacing: 0.32px; }
+.no-map { padding: 12px 16px; background: var(--info-bg); border-left: 3px solid var(--info-border); }
+
+/* --- the result: a short guide first, then the answer, then questions about it ---------------------------------------------------- */
+.empty-lead { font-size: 16px; line-height: 24px; margin-bottom: 16px; }
+.empty-lead, .guide dd, .busy-text { text-wrap: pretty; }
+.empty { margin-block: auto; }                  /* before an answer, the card's text sits in the middle of it */
+.guide { display: grid; }
+.guide > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; padding: 16px 0; border-top: 1px solid var(--hairline); }
+.guide dt { font-weight: 600; }
+.guide dd { color: var(--muted); display: grid; gap: 8px; min-width: 0; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #8d8d8d; margin-right: 8px; vertical-align: 0; }
+.d-ptc { background: var(--error); }
+.d-neg { background: var(--success); }
+.d-unc { background: var(--warning); outline: 1px solid var(--muted); outline-offset: -1px; }
+.d-ref { background: #8d8d8d; }
+
+.busy { display: grid; gap: 16px; }
+.busy-text { color: var(--muted); }
+.sk { background: var(--hover); }
+.sk-verdict { height: 50px; width: 55%; }
+.sk-line { height: 18px; width: 30%; }
+
+.verdict-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
+.verdict { font-size: 42px; line-height: 50px; font-weight: 300; letter-spacing: 0; display: flex; align-items: center; }
+.verdict .dot { width: 14px; height: 14px; margin-right: 14px; flex: none; }
+/* The full answers ("Papillary thyroid cancer detected", "No papillary thyroid cancer detected") are long: smaller, wrapping, the dot on the first line. */
+.verdict.long { font-size: 28px; line-height: 36px; align-items: flex-start; text-wrap: balance; }
+.verdict.long .dot { margin-top: 11px; }
+.card-head .conf { margin-left: auto; display: flex; align-items: baseline; gap: 8px; flex: none; }
+.conf-num { font-size: 28px; line-height: 36px; font-weight: 300; letter-spacing: 0; }
+.conf-label { font-size: 12px; line-height: 16px; letter-spacing: 0.32px; color: var(--muted); }
+.note { font-size: 16px; line-height: 22px; }
+.reasons { margin: 16px 0 0; padding: 12px 16px 12px 36px; background: var(--error-bg); border-left: 3px solid var(--error); }
+.reasons:empty { display: none; }
+.reasons li + li { margin-top: 4px; }
+
+/* About this result: the questions about the image, each a row that opens to its answer. The card grows by the answer's height
+   (the images on the left stay where they are). */
+.about-result { margin-top: 24px; }
+.about-result h3 { font-size: 16px; line-height: 22px; font-weight: 600; letter-spacing: 0; }
+.qa { margin-top: 12px; border: 1px solid var(--hairline); }
+.qa-item + .qa-item { border-top: 1px solid var(--hairline); }
+.qa-q { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; padding: 8px 16px; cursor: pointer;
+  list-style: none; transition: background-color .11s ease; }
+.qa-q::-webkit-details-marker { display: none; }
+.qa-q::after { content: ""; flex: none; width: 7px; height: 7px; margin-right: 3px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg); transition: transform .11s ease; }
+.qa-item[open] > .qa-q::after { transform: translateY(2px) rotate(-135deg); }
+@media (hover: hover) { .qa-q:hover { background: var(--hover); } }   /* not after a tap on a touch screen */
+.qa-a { padding: 4px 48px 16px 16px; text-wrap: pretty; }
+.qa-a p + p, .qa-a p + ul, .qa-a ul + p { margin-top: 8px; }
+.qa-a ul { margin: 8px 0 0; padding-left: 18px; }
+.qa-a ul.cols { columns: 2; column-gap: 24px; }
+.qa-a ul.cols li { break-inside: avoid; }
+
+/* --- the sample images: a slowly moving strip across the whole width, docked at the bottom of the screen (IBM's logo marquee) --- */
+.dock { position: sticky; bottom: 0; z-index: 10; padding: 12px 0; background: var(--canvas); border-top: 1px solid var(--hairline); }
+.strip { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; }
+.strip::-webkit-scrollbar { display: none; }
+.track { display: flex; gap: 8px; width: max-content; padding: 2px; }
+.ex { position: relative; flex: none; width: 192px; display: flex; flex-direction: column; gap: 6px; padding: 8px; margin: 0;
+  text-align: left; cursor: pointer; background: var(--canvas); border: 1px solid var(--hairline); border-radius: 0;
+  transition: background-color .11s ease; }
+.ex:hover { background: var(--hover); }
+.ex[aria-pressed="true"] { border-color: var(--ink); outline: 1px solid var(--ink); outline-offset: -2px; }
+.ex img { width: 100%; aspect-ratio: 2 / 1; object-fit: cover; display: block; background: var(--surface-2); }
+.ex .t { font-size: 14px; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex .s { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; letter-spacing: 0.32px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; }
+.ex .s b { font-weight: 400; padding: 0 6px; border-radius: 2px; background: var(--surface-2); color: var(--ink); }
+
+/* --- About: a Carbon-style modal ------------------------------------------------------------------------------------------------------ */
+dialog { width: min(768px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 0; border-radius: 0;
+  background: var(--canvas); color: var(--ink); }
+dialog::backdrop { background: var(--backdrop); }
+.about-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 8px 8px 24px;
+  border-bottom: 1px solid var(--hairline); position: sticky; top: 0; background: var(--canvas); }
+.about-head h2 { font-size: 20px; line-height: 28px; font-weight: 400; letter-spacing: 0; }
+.about-body { padding: 8px 24px 24px; }
+.about-body p { margin-top: 16px; }
+.about-body h3 { font-size: 16px; line-height: 22px; font-weight: 600; margin-top: 32px; }
+.refs { margin-top: 16px; border: 1px solid var(--hairline); }
+.refs summary { padding: 14px 16px; cursor: pointer; }
+.refs summary:hover { background: var(--hover); }
+.refs .hint, .refs figure { margin: 0 16px 16px; }
+.refs img { display: block; width: 100%; height: auto; border: 1px solid var(--hairline); }
+.refs figcaption { font-size: 12px; line-height: 16px; letter-spacing: 0.32px; margin-top: 8px; color: var(--muted); }
+
+/* --- footer: the one inverted surface --------------------------------------------------------------------------------------------------- */
+.foot { background: var(--foot); color: #c6c6c6; }
+.foot-in { max-width: 1312px; margin: 0 auto; padding: 32px; display: grid; gap: 8px; font-size: 12px; line-height: 16px; letter-spacing: 0.32px; }
+.foot-name { color: #fff; font-size: 14px; line-height: 18px; font-weight: 600; letter-spacing: 0.16px; }
+
+/* --- tablet and phone ------------------------------------------------------------------------------------------------------------------- */
+@media (max-width: 1055px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .qa-q { min-height: 48px; }                    /* one column: a thumb-sized row */
+}
+/* Short laptop screens (720 px high): tighter cards and a lower strip, so the answer and the question box stay above the strip. */
+@media (min-width: 1056px) and (max-height: 760px) {
+  .card { padding: 16px 24px; }
+  .card-head { margin-bottom: 12px; }
+  .verdict { font-size: 36px; line-height: 44px; }
+  .qa-q { min-height: 40px; padding-block: 4px; }
+  .ex img { aspect-ratio: 5 / 2; }
+}
+@media (max-width: 671px) {
+  .utility-in { padding: 6px 16px; }
+  .card-head { flex-wrap: wrap; row-gap: 0; }
+  .card-head .meta { order: 3; flex-basis: 100%; }
+  .bar-in { padding: 0 0 0 16px; }
+  .layout { padding: 16px 16px 32px; }
+  .card { padding: 16px; }
+  .layout * { scroll-margin-bottom: 0; }
+  .stage, .pair { --stage-h: 70vh; }
+  .pair { grid-template-columns: minmax(0, 1fr); }
+  .qa-a ul.cols { columns: 1; }
+  .dock { position: static; }                 /* on a phone the strip sits at the page bottom; a tap puts the image on the stage */
+  .ex { width: 184px; }                      /* wide enough for "PTIC | Label: Non-PTC" on one line */
+  .guide > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .verdict { font-size: 32px; line-height: 40px; }
+  .btn-primary { flex: 1 1 100%; justify-content: center; }
+  .st-name { font-size: 12px; line-height: 16px; letter-spacing: 0.32px; }
+  .foot-in { padding: 24px 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}

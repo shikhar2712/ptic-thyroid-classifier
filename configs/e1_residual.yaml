@@ -1,0 +1,15 @@
+# E1: residual CNN trained from scratch at native scale. Everything not listed is inherited from train_default.yaml
+# and is deliberately NOT tuned (fixed before any result existed): crop 256, 4 crops/image/epoch, batch 64, AdamW lr 1e-3,
+# wd 1e-4, bf16, uniform sampling, 30 epochs.
+#
+# PRE-LAUNCH CHANGE (made before any E1 result existed): early stopping is DISABLED (patience > epochs). Reason: in a
+# throwaway 3-step-per-epoch micro-run (deleted) the validation AUROC was already 0.93-1.0 inside single folds after <10
+# optimisation steps, so early stopping on it would select a near-untrained epoch-0 model on 4-5 patients' noise, and the
+# comparison with never-tuned baselines would be biased toward the CNN. Every run trains all 30 epochs; the epoch-29
+# checkpoint (last.pt) is the PRIMARY object for the gate; best.pt is a diagnostic only.
+model:
+  name: residual_cnn
+early_stopping:
+  patience: 1000
+output:
+  run_name: e1_residual
