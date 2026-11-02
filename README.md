@@ -4,8 +4,9 @@ A leakage-safe deep-learning pipeline, a small CNN, a safety gate and a web demo
 as **PTC-like** (papillary thyroid carcinoma) or **non-PTC-like**, built on the public
 [PathoTiroid Dataset Indonesian Collection (PTIC)](https://doi.org/10.5281/zenodo.18827019).
 
-**Live demo: [https://shikharr27-ptic-thyroid-demo.hf.space](https://shikharr27-ptic-thyroid-demo.hf.space)** (Hugging Face Space, free CPU hardware: if it has been idle it needs about a minute to
-wake up, then a sample image takes about 6 seconds and an upload about 25).
+**Live demo:** not hosted yet. The web demo runs locally, and the files for a Hugging Face Docker Space (Dockerfile, asset loader,
+smoke test) are in [`deploy/`](deploy/). Hugging Face now charges for Docker Spaces on CPU, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+On 2 CPU cores, measured: about 6 seconds for a sample image and 25 seconds for an upload.
 
 > **Research project. Not a medical device. Not for diagnosis.** The model describes how a patch of tissue looks to a network trained on
 > 1,006 patches from 24 patients scanned at one hospital on one scanner. It says nothing about a patient.
@@ -155,7 +156,7 @@ within 0.0001. Details: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 * No image, patient table, split definition, prediction file or trained weight is in this repository, and `.gitignore` and the
   release scripts keep it that way.
-* The Space downloads the weights, the gate's statistics and the six sample images from a **private** repository with a secret token.
+* The Space deployment downloads the weights, the gate's statistics and the six sample images from a **private** repository with a secret token.
   The public API and the page return no patient number, image id or example title, and the reference figures that have patient numbers
   drawn into them are not served.
 * The dataset is CC BY-SA 4.0 and must be obtained from Zenodo. Uploaded images are read into memory, scored and dropped: nothing is

@@ -5,11 +5,15 @@ The demo is one FastAPI service (`src/demo/app.py`) with a hand-written front en
 | Where | Visibility | Holds |
 |---|---|---|
 | GitHub repository | public | code, tests, configs, this documentation. No data, weights, patient tables or tissue images |
-| Hugging Face Space (Docker SDK, free CPU) | public | the same code, a Dockerfile, a model card. **No weights** |
+| Hugging Face Space (Docker SDK, CPU basic) | public | the same code, a Dockerfile, a model card. **No weights**. *Not created yet: see the note below* |
 | Hugging Face model repository | **private** | the 15 ensemble members, the input-check statistics, ImageNet ResNet-18 weights, six sample images |
 
 The Space reads the private repository with a read-only token that is stored as a **Space secret** (never in a file or in the image's
 public layers), at build time when the build is given the secret and otherwise when the container starts (`deploy/space/fetch_assets.py`).
+
+> **Status.** The private repository exists and the deployment files are verified locally, but the Space itself has not been created: in
+> November 2026 Hugging Face refused to create a Docker Space on free CPU hardware (HTTP 402, "requires a PRO subscription"). Static Spaces
+> are free but cannot run the model.
 
 ## Why a Docker Space and not Streamlit
 
