@@ -5,9 +5,9 @@ The same Python code (input gate, 15-model ensemble, Grad-CAM) has two front end
 | Front end | Where | Used for |
 |---|---|---|
 | FastAPI service with a hand-written page (`src/demo`) | local, or as a Docker image (`deploy/space/`) | the internal demo and the JSON API |
-| Streamlit app (`deploy/streamlit/streamlit_app.py`) | Streamlit Community Cloud | the public demo |
+| Streamlit host (`deploy/streamlit/streamlit_app.py`) | Streamlit Community Cloud | the public demo: the same page, unchanged |
 
-The Streamlit app is the public one because it is free to host from a GitHub repository. Hugging Face now charges for Docker Spaces on CPU
+The Streamlit host is the public one because it is free to host from a GitHub repository. Hugging Face now charges for Docker Spaces on CPU
 (HTTP 402, "requires a PRO subscription" in November 2026), and static Spaces cannot run a model. The Docker files stay in `deploy/space/`
 for anyone with a PRO account; they were verified locally but never built on Hugging Face.
 
@@ -22,6 +22,15 @@ for anyone with a PRO account; they were verified locally but never built on Hug
 The app downloads the private repository at its first start, with a read-only token stored as a **Streamlit secret** (never in a file of
 this repository), into the app folder, or into a temporary folder when that is not writable (`src/demo/assets.py`). The download and
 the model load are cached for the life of the process; one analysis runs at a time, which also bounds memory.
+
+## How the same page runs inside Streamlit
+
+Streamlit has no web server to hand the page its `api/...` requests, so the page is not rewritten: it runs unchanged (`src/demo/static`)
+inside a Streamlit *component*. `deploy/streamlit/ui_shim.js` is loaded in front of the page's own script and answers its `fetch("api/...")`
+calls and `<img src="api/...">` images by sending them, in batches, through the component channel to Python, where `src/demo/rpc.py`
+answers them with the same paths and JSON as the FastAPI service (`tests/test_demo_rpc.py`). The page, its styles, its fonts and its
+wording are the files of the FastAPI demo; only the transport differs. Streamlit's own header and padding are hidden so that the page
+fills the window.
 
 ## Deploying
 
@@ -45,23 +54,25 @@ On the machine that built the project, in a brand-new Python 3.12 environment ma
 from `deploy/streamlit/requirements.txt` alone, run on 2 CPU cores, with the model downloaded from the private repository:
 
 * the install resolves to `torch 2.11.0+cpu` and installs no `nvidia-*`, `cuda` or `triton` package (1.3 GB on disk);
-* a browser (Playwright) drove the app: two sample images give "Papillary thyroid carcinoma detected" and "No papillary thyroid carcinoma
-  detected" at 99.9% confidence with their Grad-CAM; a non-tissue upload is refused with reasons; an upload that is not a known sample
-  is scored by all 15 models; no patient number appears anywhere on the page;
-* time per analysis on 2 cores: about 7 seconds for a sample (3 models) and about 24 seconds for an upload (15 models), with the heat map;
-* peak memory of the process (`VmHWM`) after all of the above: **1.38 GB**. Streamlit's own documentation lists up to about 2.7 GB per
+* a browser (Playwright) drove the page inside Streamlit: two sample images give "Papillary thyroid carcinoma detected" and "No papillary
+  thyroid carcinoma detected" at 99.9% confidence with their Grad-CAM and the five "About this result" questions; a non-tissue upload
+  is refused with reasons; an upload that is not a known sample is scored by all 15 models; the dark theme toggle works; no patient
+  number appears anywhere on the page;
+* time from click to answer, measured in the browser on 2 cores: about 10 seconds for a sample (3 models) and about 29 seconds for an
+  upload (15 models), with the heat map;
+* peak memory of the process (`VmHWM`) after all of the above: **1.25 GB**. Streamlit's own documentation lists up to about 2.7 GB per
   app for Community Cloud (a February 2024 figure that may have changed); the limit in force was not checked;
 * the six built-in samples give the same answers as the GPU run the project was developed on, with probabilities within 0.0001 on the
   released CPU build of PyTorch;
-* the test suite passes on a bare checkout (102 passed, 10 skipped: they need the dataset, trained artifacts or Streamlit), and a test checks that the app says what is missing instead of crashing when the model files
+* the test suite passes on a bare checkout (91 passed, 10 skipped: they need the dataset, trained artifacts or Streamlit), and a test checks that the app says what is missing instead of crashing when the model files
   or the secret are absent.
 
-Not verified until the app is deployed: Community Cloud's actual memory, CPU and disk limits, the first start's download time there, and
+Not verified until the app is deployed: how the page sizes itself inside Community Cloud's own frame, Community Cloud's actual memory, CPU and disk limits, the first start's download time there, and
 how long the app takes to wake after it has been put to sleep for inactivity.
 
 ## Privacy
 
-* The Streamlit app never receives a patient number or image id: its list of known sample files holds only a file hash, a
+* The Streamlit host never receives a patient number or image id: its list of known sample files holds only a file hash, a
   cross-validation fold and the dataset's class.
 * The FastAPI service has a public mode (`PTIC_DEMO_PUBLIC=1`) that removes patient numbers, image ids and example titles from every
   response, and `PTIC_DEMO_FRAME_ANCESTORS` to allow embedding by a named host; `deploy/smoke_test.py <url>` checks a running FastAPI
